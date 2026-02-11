@@ -1,29 +1,25 @@
 import "../styles/LandingPage.css";
 
-const imgFrame1 = "https://www.figma.com/api/mcp/asset/29cb15ca-35b3-4aaa-93ae-23a8b2462bf7";
+const imgFrame1 = "/flood.jpg";
 
 export default function LandingPage() {
+  const scrollToMap = () => {
+    const mapSection = document.getElementById('map');
+    if (mapSection) {
+      window.scrollTo({
+        top: mapSection.offsetTop - 70,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
-    <div className="landing-container">
+    <section id="home" className="landing-container">
       {/* Background Image */}
       <div className="background-image-wrapper">
         <img alt="flood background" className="background-image" src={imgFrame1} />
         <div className="background-overlay"></div>
       </div>
-
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="logo">C Guard</div>
-
-        <ul className="nav-links">
-          <li className="nav-item active">Home</li>
-          <li className="nav-item">Map</li>
-          <li className="nav-item">Emergency</li>
-          <li className="nav-item">Contacts</li>
-        </ul>
-
-        <button className="login-btn">Authority Login</button>
-      </nav>
 
       {/* Hero Section */}
       <div className="hero-section">
@@ -36,9 +32,9 @@ export default function LandingPage() {
             to support safer communities along the Chenab River Basin.
           </p>
 
-          <button className="cta-btn">Check Flood Risk</button>
+          <button className="cta-btn" onClick={scrollToMap}>Check Flood Risk</button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

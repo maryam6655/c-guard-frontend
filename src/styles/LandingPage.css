@@ -1,12 +1,6 @@
 /* =========================
    GLOBAL RESET
 ========================= */
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow-x: hidden;
-}
-
 * {
   margin: 0;
   padding: 0;
@@ -19,8 +13,8 @@ html, body {
 ========================= */
 .landing-container {
   position: relative;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
   overflow: hidden;
 }
 
@@ -43,8 +37,9 @@ html, body {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    rgba(10, 37, 64, 0.75),
-    rgba(10, 37, 64, 0.55)
+    135deg,
+    rgba(10, 37, 64, 0.75) 0%,
+    rgba(23, 59, 95, 0.7) 100%
   );
 }
 
@@ -57,14 +52,14 @@ html, body {
 .hero-section {
   position: relative;
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
   z-index: 10;
 }
 
 .hero-overlay {
   width: 100%;
-  height: 100%;
-  padding: 150px 70px;
+  min-height: 100vh;
+  padding: 150px 70px 100px 70px;
   color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -72,28 +67,30 @@ html, body {
 }
 
 .hero-title {
-  font-size: 64px;
+  font-size: 60px;
   font-weight: 700;
   margin-bottom: 14px;
   line-height: 1.1;
   max-width: 520px;
+  color: #ffffff;
 }
 
 .hero-subtitle {
-  font-size: 28px;
-  font-weight: 500;
+  font-size: 24px;
+  font-weight: 400;
   margin-bottom: 26px;
-  color: #cfe2f3;
+  color: rgba(255, 255, 255, 0.9);
   line-height: 1.4;
+  max-width: 550px;
 }
 
 .hero-description {
-  max-width: 640px;
-  font-size: 22px;
-  font-weight: 500;
-  line-height: 1.6;
+  max-width: 600px;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.65;
   margin-bottom: 38px;
-  color: #c9d8e8;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* =========================
@@ -126,10 +123,6 @@ html, body {
    TABLET (≤1024px)
 ========================= */
 @media (max-width: 1024px) {
-  .nav-links {
-    gap: 30px;
-  }
-
   .hero-overlay {
     padding: 120px 50px;
   }
@@ -156,26 +149,6 @@ html, body {
    MOBILE (≤768px)
 ========================= */
 @media (max-width: 768px) {
-  .logo {
-    font-size: 20px;
-  }
-
-  .nav-links {
-    width: 100%;
-    justify-content: flex-start;
-    gap: 18px;
-    margin-top: 10px;
-  }
-
-  .nav-item {
-    font-size: 14px;
-  }
-
-  .login-btn {
-    font-size: 13px;
-    padding: 8px 14px;
-  }
-
   .hero-overlay {
     padding: 100px 30px;
   }

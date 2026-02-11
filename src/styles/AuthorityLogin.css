@@ -1,3 +1,34 @@
+/* Back to Home Button */
+.back-to-home-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #173B5F;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.back-to-home-btn:hover {
+  background: #fff;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.back-to-home-btn svg {
+  flex-shrink: 0;
+}
+
 /* Page Layout */
 .login-page {
   display: flex;
@@ -58,9 +89,9 @@
 }
 
 .login-card {
-  width: 450px;
+  width: 480px;
   background: white;
-  padding: 40px;
+  padding: 45px 40px;
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
@@ -147,6 +178,15 @@
 
 .login-btn:hover {
   background: #1a3251;
+}
+
+.login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.login-btn:disabled:hover {
+  background: #1f3b5f;
 }
 
 /* Bottom Text */

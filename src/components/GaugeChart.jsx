@@ -2,10 +2,15 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import '../styles/AuthorityDashboard.css';
 
-const GaugeChart = ({ data }) => {
+const GaugeChart = ({ data, ucName, dateRange }) => {
   return (
     <div className="chart-card">
-      <h3 className="chart-title">Gauge Level Analysis</h3>
+      <div className="chart-header">
+        <h3 className="chart-title">Gauge Level Analysis</h3>
+        {ucName && dateRange && (
+          <p className="chart-subtitle">{ucName} | {dateRange}</p>
+        )}
+      </div>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
