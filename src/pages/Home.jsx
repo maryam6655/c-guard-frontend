@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import LandingPage from './LandingPage';
-import MapSection from '../components/MapSection';
+import MapPage from './MapPage';
 import EmergencySection from '../components/EmergencySection';
 import ContactSection from '../components/ContactSection';
 import Footer from '../components/Footer';
@@ -38,7 +38,13 @@ const Home = ({ onAuthorityLogin }) => {
       
       <main className="home-content">
         <LandingPage />
-        <MapSection />
+        <section id="map" className="map-section-wrapper">
+          <div className="map-section-header">
+            <h2 className="section-title">Live Flood Risk Map</h2>
+            <p className="section-subtitle">Real-time visualization of flood risk across Chenab River Basin</p>
+          </div>
+          <MapPage />
+        </section>
         <EmergencySection />
         <ContactSection />
       </main>
