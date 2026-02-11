@@ -42,31 +42,70 @@ function MapController({ searchQuery, onMapReady, ucData }) {
 
 const MapPage = () => {
   const [basinData, setBasinData] = useState(null);
+  const [ucData, setUcData] = useState(null);
   const [riverData, setRiverData] = useState(null);
   const [gaugeData, setGaugeData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [map, setMap] = useState(null);
   const [isListening, setIsListening] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [basemapType, setBasemapType] = useState('streets'); // 'streets' or 'satellite'
   const mapRef = useRef();
 
   // Load GeoJSON data
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
       try {
-        const [basinRes, riverRes, gaugeRes] = await Promise.all([
-          fetch('/src/data/chenab_basin.geojson'),
-          fetch('/src/data/chenab_rivers.geojson'),
-          fetch('/src/data/chenab_guagess.geojson')
+        const [basinRes, ucRes, riverRes, gaugeRes] = await Promise.all([
+          fetch('/geojson/chenab_basin.geojson'),
+          fetch('/geojson/union_councils.geojson'),
+          fetch('/geojson/chenab_rivers.geojson'),
+          fetch('/geojson/chenab_guages.geojson')
         ]);
         
         setBasinData(await basinRes.json());
+        const ucGeoJSON = await ucRes.json();
+        
+        // Filter to only Punjab UCs in the Chenab basin region (bounding box)
+        // Roughly: lat 31.7-32.3, lng 74.0-74.6
+        const filteredFeatures = ucGeoJSON.features.filter(feature => {
+          if (feature.properties.PROVINCE !== 'Punjab') return false;
+          
+          // Get centroid or first coordinate to check bounds
+          const coords = feature.geometry.coordinates[0];
+          if (!coords || !coords[0]) return false;
+          
+          const lng = coords[0][0];
+          const lat = coords[0][1];
+          
+          return lat >= 31.7 && lat <= 32.3 && lng >= 74.0 && lng <= 74.6;
+        });
+        
+        console.log(`Filtered UCs: ${filteredFeatures.length} of ${ucGeoJSON.features.length}`);
+        
+        // Add mock risk percentages to filtered UC data
+        ucGeoJSON.features = filteredFeatures.map(feature => ({
+          ...feature,
+          properties: {
+            ...feature.properties,
+            risk_percentage: mockUCData.find(uc => 
+              feature.properties.UC_NAME?.includes(uc.name.replace('UC ', '')) ||
+              feature.properties.UC?.includes(uc.name.replace('UC ', ''))
+            )?.riskPercentage || Math.floor(Math.random() * 80) + 10
+          }
+        }));
+        
+        setUcData(ucGeoJSON);
         setRiverData(await riverRes.json());
         setGaugeData(await gaugeRes.json());
+        setLoading(false);
       } catch (error) {
         console.error('Error loading GeoJSON data:', error);
         // Fallback mock data for demo
         setBasinData(generateMockBasinData());
         setRiverData(generateMockRiverData());
+        setLoading(false);
       }
     };
 
@@ -127,15 +166,25 @@ const MapPage = () => {
     return '#16a34a';
   };
 
-  // Basin style function
-  const basinStyle = (feature) => ({
+  // UC boundary style function  
+  const ucStyle = (feature) => ({
     fillColor: getRiskColor(feature.properties.risk_percentage),
-    weight: 1,
-    opacity: 0.8,
+    weight: 2,
+    opacity: 1,
     color: 'white',
     dashArray: '',
-    fillOpacity: 0.6
+    fillOpacity: 0.5
   });
+
+  // Basin style function (for chenab basin outline)
+  const basinStyle = {
+    fillColor: 'transparent',
+    weight: 3,
+    opacity: 0.8,
+    color: '#3b82f6',
+    dashArray: '5, 5',
+    fillOpacity: 0
+  };
 
   // River style with glow effect
   const riverStyle = {
@@ -148,21 +197,27 @@ const MapPage = () => {
   };
 
   // Custom popup content for UC labels
-  const onEachBasinFeature = (feature, layer) => {
-    if (feature.properties && feature.properties.name) {
+  const onEachUCFeature = (feature, layer) => {
+    if (feature.properties && feature.properties.risk_percentage) {
       const percentage = feature.properties.risk_percentage;
+      const ucName = feature.properties.UC_NAME || feature.properties.UC || 'UC';
       const popupContent = `
         <div class="custom-popup">
-          <span class="uc-name">${feature.properties.name}</span>
+          <span class="uc-name">${ucName}</span>
           <span class="uc-percentage" style="color: ${getRiskTextColor(percentage)}">${percentage}%</span>
         </div>
       `;
       
-      // Create permanent tooltip (always visible)
+      // Create tooltip that shows on hover
       layer.bindTooltip(popupContent, {
-        permanent: true,
-        direction: 'center',
+        permanent: false,
+        direction: 'top',
         className: 'custom-tooltip'
+      });
+      
+      // Add click event for more info
+      layer.on('click', function() {
+        layer.openPopup();
       });
     }
   };
@@ -230,10 +285,19 @@ const MapPage = () => {
           ref={mapRef}
           zoomControl={false}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          {basemapType === 'streets' ? (
+            <TileLayer
+              key="streets"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          ) : (
+            <TileLayer
+              key="satellite"
+              attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            />
+          )}
           
           <MapController 
             searchQuery={searchQuery} 
@@ -241,12 +305,20 @@ const MapPage = () => {
             ucData={mockUCData}
           />
           
-          {/* Basin boundaries with risk coloring */}
+          {/* Union Council boundaries with risk coloring */}
+          {ucData && (
+            <GeoJSON
+              data={ucData}
+              style={ucStyle}
+              onEachFeature={onEachUCFeature}
+            />
+          )}
+          
+          {/* Basin outline */}
           {basinData && (
             <GeoJSON
               data={basinData}
               style={basinStyle}
-              onEachFeature={onEachBasinFeature}
             />
           )}
           
@@ -376,6 +448,19 @@ const MapPage = () => {
               <path d="M5 12h14" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
+        </div>
+
+        {/* Basemap Toggle */}
+        <div className="basemap-toggle">
+          <span className="toggle-label">Map</span>
+          <button 
+            onClick={() => setBasemapType(basemapType === 'streets' ? 'satellite' : 'streets')} 
+            className={`toggle-switch ${basemapType === 'satellite' ? 'active' : ''}`}
+            aria-label="Toggle basemap"
+          >
+            <div className="toggle-slider"></div>
+          </button>
+          <span className="toggle-label">Satellite</span>
         </div>
       </div>
     </div>
