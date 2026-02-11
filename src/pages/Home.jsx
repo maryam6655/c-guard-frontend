@@ -7,7 +7,7 @@ import ContactSection from '../components/ContactSection';
 import Footer from '../components/Footer';
 import '../styles/Home.css';
 
-const Home = ({ onAuthorityLogin }) => {
+const Home = ({ onAuthorityLogin, onCheckFloodRisk }) => {
   useEffect(() => {
     // Intersection Observer for scroll animations
     const observerOptions = {
@@ -37,7 +37,7 @@ const Home = ({ onAuthorityLogin }) => {
       <Navbar onAuthorityLogin={onAuthorityLogin} />
       
       <main className="home-content">
-        <LandingPage />
+        <LandingPage onCheckFloodRisk={onCheckFloodRisk} />
         <section id="map" className="map-section-wrapper">
           <div className="map-section-header">
             <h2 className="section-title">Live Flood Risk Map</h2>

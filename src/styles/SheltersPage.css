@@ -1,0 +1,274 @@
+/* Shelters Page Container */
+.shelters-page {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: #ffffff;
+  overflow-y: auto;
+}
+
+/* Header */
+.shelters-header {
+  position: sticky;
+  top: 0;
+  background: #1e3a5f;
+  color: white;
+  padding: 1.25rem 3rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.back-btn-shelters {
+  padding: 0.5rem 1.25rem;
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.back-btn-shelters:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.header-info {
+  flex: 1;
+  text-align: center;
+}
+
+.shelters-main-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  color: white;
+}
+
+.shelters-subtitle {
+  font-size: 1rem;
+  margin: 0;
+  opacity: 0.9;
+  color: white;
+}
+
+/* Content Container */
+.shelters-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 3rem 3rem;
+}
+
+/* Two Column Layout */
+.two-column-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+/* Column Title */
+.column-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 2rem 0;
+}
+
+/* Left Column - Helpline Section */
+.helpline-section {
+  position: sticky;
+  top: 100px;
+}
+
+.helpline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.helpline-card {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  border: 1px solid #e2e8f0;
+}
+
+.helpline-card:hover {
+  background: #f1f5f9;
+  transform: translateX(4px);
+}
+
+.phone-icon-circle {
+  width: 40px;
+  height: 40px;
+  background: #22d3ee;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: white;
+}
+
+.helpline-info {
+  flex: 1;
+}
+
+.helpline-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
+  margin: 0 0 0.25rem 0;
+}
+
+.helpline-number {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #22d3ee;
+  margin: 0;
+}
+
+/* Right Column - Shelters Section */
+.shelters-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.shelter-card-compact {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.shelter-card-compact:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.shelter-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.shelter-name-compact {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  flex: 1;
+}
+
+.status-badge-compact {
+  padding: 0.35rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.shelter-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.shelter-detail-text {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.facilities-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.facility-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .two-column-layout {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  
+  .helpline-section {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .shelters-header {
+    padding: 1rem 1.5rem;
+  }
+
+  .shelters-main-title {
+    font-size: 1.5rem;
+  }
+  
+  .shelters-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .shelters-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .column-title {
+    font-size: 1.25rem;
+  }
+  
+  .facilities-row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .shelters-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .header-info {
+    text-align: left;
+  }
+
+  .shelter-card-compact {
+    padding: 1.25rem;
+  }
+
+  .shelter-card-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .status-badge-compact {
+    align-self: flex-start;
+  }
+}

@@ -2,11 +2,14 @@ import { useState } from "react";
 import Home from "./pages/Home";
 import AuthorityLogin from "./pages/AuthorityLogin";
 import AuthorityDashboard from "./pages/AuthorityDashboard";
+import FloodRiskPage from "./pages/FloodRiskPage";
+import SheltersPage from "./pages/SheltersPage";
 import "./App.css";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
   const [user, setUser] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -26,6 +29,15 @@ function App() {
     setCurrentPage("home");
   };
 
+  const handleCheckFloodRisk = () => {
+    setCurrentPage("floodRisk");
+  };
+
+  const handleViewShelters = (location) => {
+    setUserLocation(location);
+    setCurrentPage("shelters");
+  };
+
   // Render based on current page
   if (currentPage === "dashboard" && user) {
     return <AuthorityDashboard user={user} onLogout={handleLogout} />;
@@ -35,7 +47,15 @@ function App() {
     return <AuthorityLogin onLogin={handleLogin} onBackToHome={handleBackToHome} />;
   }
 
-  return <Home onAuthorityLogin={handleAuthorityLogin} />;
+  if (currentPage === "floodRisk") {
+    return <FloodRiskPage onBackToHome={handleBackToHome} onViewShelters={handleViewShelters} />;
+  }
+
+  if (currentPage === "shelters") {
+    return <SheltersPage onBack={handleBackToHome} />;
+  }
+
+  return <Home onAuthorityLogin={handleAuthorityLogin} onCheckFloodRisk={handleCheckFloodRisk} />;
 }
 
 export default App;

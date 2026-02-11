@@ -2,14 +2,19 @@ import "../styles/LandingPage.css";
 
 const imgFrame1 = "/flood.jpg";
 
-export default function LandingPage() {
-  const scrollToMap = () => {
-    const mapSection = document.getElementById('map');
-    if (mapSection) {
-      window.scrollTo({
-        top: mapSection.offsetTop - 70,
-        behavior: 'smooth'
-      });
+export default function LandingPage({ onCheckFloodRisk }) {
+  const handleCheckFloodRisk = () => {
+    if (onCheckFloodRisk) {
+      onCheckFloodRisk();
+    } else {
+      // Fallback to scroll behavior if prop not provided
+      const mapSection = document.getElementById('map');
+      if (mapSection) {
+        window.scrollTo({
+          top: mapSection.offsetTop - 70,
+          behavior: 'smooth'
+        });
+      }
     }
   };
 
@@ -32,7 +37,7 @@ export default function LandingPage() {
             to support safer communities along the Chenab River Basin.
           </p>
 
-          <button className="cta-btn" onClick={scrollToMap}>Check Flood Risk</button>
+          <button className="cta-btn" onClick={handleCheckFloodRisk}>Check Flood Risk</button>
         </div>
       </div>
     </section>
