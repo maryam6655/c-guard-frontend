@@ -54,37 +54,117 @@ const AuthorityDashboard = ({ user, onLogout }) => {
   };
 
   // Export handlers
-  // TODO: Implement actual PDF/CSV export functionality
   const handleExportPDF = () => {
-    console.log('Exporting to PDF...', { selectedUC, forecastPeriod, startDate, endDate });
-    
-    // Show loading state
     const ucName = dashboardData.ucName || getSelectedUCName();
     const dateRange = dashboardData.dateRange || (startDate && endDate ? `${startDate} to ${endDate}` : '');
-    const dateInfo = dateRange ? `\nDate Range: ${dateRange}` : '';
-    alert(`📄 Generating PDF Report\n\nUnion Council: ${ucName}\nForecast Period: ${forecastPeriod} hours${dateInfo}\n\nDownload will start shortly...`);
     
-    // Simulate export processing
-    setTimeout(() => {
-      console.log('PDF export completed');
-      // In production, this would trigger actual PDF download
-    }, 1000);
+    // Create printable content
+    const printWindow = window.open('', '_blank');
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Flood Risk Report - ${ucName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #173b5f; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #173b5f; color: white; }
+          .info { margin: 10px 0; }
+        </style>
+      </head>
+      <body>
+        <h1>C Guard - Flood Risk Report</h1>
+        <div class="info"><strong>Union Council:</strong> ${ucName}</div>
+        <div class="info"><strong>Forecast Period:</strong> ${forecastPeriod} hours</div>
+        ${dateRange ? `<div class="info"><strong>Date Range:</strong> ${dateRange}</div>` : ''}
+        <div class="info"><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
+        
+        <h2>Gauge Levels</h2>
+        <table>
+          <tr><th>Time (hrs)</th><th>Level (m)</th></tr>
+          ${dashboardData.gaugeLevels?.map(g => `<tr><td>${g.time}</td><td>${g.level}</td></tr>`).join('') || '<tr><td colspan="2">No data available</td></tr>'}
+        </table>
+        
+        <h2>Discharge Data</h2>
+        <table>
+          <tr><th>Time (hrs)</th><th>Discharge (m³/s)</th></tr>
+          ${dashboardData.discharge?.map(d => `<tr><td>${d.time}</td><td>${d.value}</td></tr>`).join('') || '<tr><td colspan="2">No data available</td></tr>'}
+        </table>
+        
+        <h2>Risk Progression</h2>
+        <table>
+          <tr><th>Period</th><th>Danger (%)</th><th>High (%)</th><th>Critical (%)</th></tr>
+          ${dashboardData.riskProgression?.map(r => `<tr><td>${r.hour}</td><td>${r.danger}</td><td>${r.high}</td><td>${r.critical}</td></tr>`).join('') || '<tr><td colspan="4">No data available</td></tr>'}
+        </table>
+        
+        <script>
+          window.onload = () => {
+            window.print();
+            setTimeout(() => window.close(), 1000);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
   };
 
   const handleExportCSV = () => {
-    console.log('Exporting to CSV...', { selectedUC, forecastPeriod, startDate, endDate });
-    
-    // Show loading state
     const ucName = dashboardData.ucName || getSelectedUCName();
     const dateRange = dashboardData.dateRange || (startDate && endDate ? `${startDate} to ${endDate}` : '');
-    const dateInfo = dateRange ? `\nDate Range: ${dateRange}` : '';
-    alert(`📊 Generating CSV Data\n\nUnion Council: ${ucName}\nForecast Period: ${forecastPeriod} hours${dateInfo}\n\nDownload will start shortly...`);
     
-    // Simulate export processing
-    setTimeout(() => {
-      console.log('CSV export completed');
-      // In production, this would trigger actual CSV download
-    }, 1000);
+    // Create CSV content
+    let csvContent = `C Guard - Flood Risk Data Export\n`;
+    csvContent += `Union Council,${ucName}\n`;
+    csvContent += `Forecast Period,${forecastPeriod} hours\n`;
+    if (dateRange) csvContent += `Date Range,${dateRange}\n`;
+    csvContent += `Generated,${new Date().toLocaleString()}\n\n`;
+    
+    // Gauge Levels
+    csvContent += `Gauge Levels\n`;
+    csvContent += `Time (hrs),Level (m)\n`;
+    if (dashboardData.gaugeLevels) {
+      dashboardData.gaugeLevels.forEach(g => {
+        csvContent += `${g.time},${g.level}\n`;
+      });
+    }
+    csvContent += `\n`;
+    
+    // Discharge Data
+    csvContent += `Discharge Data\n`;
+    csvContent += `Time (hrs),Discharge (m³/s)\n`;
+    if (dashboardData.discharge) {
+      dashboardData.discharge.forEach(d => {
+        csvContent += `${d.time},${d.value}\n`;
+      });
+    }
+    csvContent += `\n`;
+    
+    // Risk Progression
+    csvContent += `Risk Progression\n`;
+    csvContent += `Period,Danger (%),High (%),Critical (%)\n`;
+    if (dashboardData.riskProgression) {
+      dashboardData.riskProgression.forEach(r => {
+        csvContent += `${r.hour},${r.danger},${r.high},${r.critical}\n`;
+      });
+    }
+    
+    // Create and download CSV file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `CGuard_FloodRisk_${ucName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Get selected UC name

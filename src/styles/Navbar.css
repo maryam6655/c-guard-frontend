@@ -17,12 +17,12 @@
 }
 
 .navbar-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 1rem 3rem;
+  width: 100%;
+  margin: 0;
+  padding: 1rem 2rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  position: relative;
 }
 
 /* Logo */
@@ -34,7 +34,8 @@
   transition: color 0.3s ease;
   letter-spacing: 0.5px;
   white-space: nowrap;
-  margin-right: 1rem;
+  margin-right: auto;
+  padding-left: 1rem;
 }
 
 .navbar-main.scrolled .navbar-logo {
@@ -48,13 +49,14 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  flex: 1;
-  justify-content: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .navbar-link {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 500;
   cursor: pointer;
   position: relative;
@@ -87,11 +89,13 @@
   border: 2px solid rgba(255, 255, 255, 0.5);
   padding: 0.7rem 1.8rem;
   border-radius: 6px;
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   white-space: nowrap;
+  margin-left: auto;
+  margin-right: 1rem;
 }
 
 .navbar-login-btn:hover {
