@@ -1,10 +1,14 @@
 import React from 'react';
+import CGuardLogoIcon from './CGuardLogoIcon';
 import '../styles/AuthorityDashboard.css';
 
-const TopNavbar = ({ user, onExportPDF, onExportCSV, onLogout }) => {
+const TopNavbar = ({ user, onLogout }) => {
   return (
     <nav className="top-navbar">
       <div className="navbar-brand">
+        <span className="brand-logo-icon" aria-hidden="true">
+          <CGuardLogoIcon size={36} />
+        </span>
         <div className="brand-logo">C Guard</div>
         <div className="brand-subtitle">Authority Dashboard</div>
       </div>

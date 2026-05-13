@@ -27,6 +27,9 @@
 
 /* Logo */
 .navbar-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
   font-size: 1.90rem;
   font-weight: 700;
   color: #fff;
@@ -36,6 +39,23 @@
   white-space: nowrap;
   margin-right: auto;
   padding-left: 1rem;
+}
+
+.navbar-logo-icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.navbar-logo-icon svg {
+  display: block;
+}
+
+.navbar-logo-text {
+  line-height: 1;
 }
 
 .navbar-main.scrolled .navbar-logo {
@@ -99,6 +119,27 @@
 }
 
 .navbar-login-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #fff;
+  transform: translateY(-1px);
+}
+
+.navbar-back-btn {
+  background: transparent;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  padding: 0.7rem 1.4rem;
+  border-radius: 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  margin-left: auto;
+  margin-right: 1rem;
+}
+
+.navbar-back-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: #fff;
   transform: translateY(-1px);
@@ -212,7 +253,8 @@
 
 @media (max-width: 768px) {
   .navbar-links,
-  .navbar-login-btn {
+  .navbar-login-btn,
+  .navbar-back-btn {
     display: none;
   }
 
@@ -232,6 +274,12 @@
 @media (max-width: 480px) {
   .navbar-logo {
     font-size: 1.5rem;
+    gap: 0.5rem;
+  }
+
+  .navbar-logo-icon {
+    width: 34px;
+    height: 34px;
   }
 
   .navbar-content {

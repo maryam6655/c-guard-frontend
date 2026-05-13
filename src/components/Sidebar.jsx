@@ -10,7 +10,9 @@ const Sidebar = ({
   startDate,
   endDate,
   onStartDateChange,
-  onEndDateChange
+  onEndDateChange,
+  onManageShelters,
+  activePage = 'dashboard'
 }) => {
   return (
     <aside className="sidebar">
@@ -117,6 +119,16 @@ const Sidebar = ({
             })()}
           </div>
         )}
+      </div>
+
+      <div className="sidebar-section sidebar-action-section">
+        <button
+          type="button"
+          className={`sidebar-action-btn ${activePage === 'shelter-management' ? 'is-active' : ''}`}
+          onClick={onManageShelters}
+        >
+          Manage Shelters
+        </button>
       </div>
     </aside>
   );

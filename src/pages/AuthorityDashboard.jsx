@@ -4,48 +4,88 @@ import Sidebar from '../components/Sidebar';
 import GaugeChart from '../components/GaugeChart';
 import DischargeChart from '../components/DischargeChart';
 import RiskProgressionChart from '../components/RiskProgressionChart';
-import { mockAuthorityData, fetchAuthorityData } from '../data/mockAuthorityData';
 import '../styles/AuthorityDashboard.css';
 
-const AuthorityDashboard = ({ user, onLogout }) => {
-  // State management
-  const [selectedUC, setSelectedUC] = useState('');
-  const [forecastPeriod, setForecastPeriod] = useState('48');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [dashboardData, setDashboardData] = useState(mockAuthorityData);
-  const [loading, setLoading] = useState(false);
+// Station names mapped to UC names (matches your backend)
+const UC_LIST = [
+  { id: 1, name: "Marala",    station: "Marala"    },
+  { id: 2, name: "Khanki",    station: "Khanki"    },
+  { id: 3, name: "Qadirabad", station: "Qadirabad" },
+  { id: 4, name: "Trimmu",    station: "Trimmu"    },
+];
 
-  // TODO: Replace with actual API integration
-  // This effect simulates data fetching when filters change
+const AuthorityDashboard = ({ user, onLogout, onManageShelters }) => {
+  const [selectedUC, setSelectedUC]         = useState('');
+  const [forecastPeriod, setForecastPeriod] = useState('48');
+  const [startDate, setStartDate]           = useState('');
+  const [endDate, setEndDate]               = useState('');
+  const [dashboardData, setDashboardData]   = useState(null);
+  const [loading, setLoading]               = useState(false);
+  const [error, setError]                   = useState('');
+
+  // Fetch real data from backend when UC or forecast period changes
   useEffect(() => {
     const loadData = async () => {
-      if (!selectedUC) {
-        setLoading(false);
-        return;
-      }
-      
+      if (!selectedUC) return;
+
       setLoading(true);
+      setError('');
+
       try {
-        // In production, this will call the actual API:
-        // const data = await fetchAuthorityData(selectedUC, forecastPeriod, startDate, endDate);
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // For now, using mock data
-        const data = await fetchAuthorityData(selectedUC, forecastPeriod, startDate, endDate);
-        setDashboardData(data);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        // TODO: Add error handling UI
+        const uc      = UC_LIST.find(u => u.id === parseInt(selectedUC));
+        const station = uc ? uc.station : "Marala";
+        const token   = localStorage.getItem("token");
+
+        const response = await fetch(
+          `https://ghaniasaghir-cguard-backend.hf.space/analytics/${station}?hours=${forecastPeriod}`,
+          {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch analytics data");
+        }
+
+        const data = await response.json();
+
+        // Transform backend response to match what the charts expect
+        const transformed = {
+          ucName:    station,
+          dateRange: `Forecast: ${forecastPeriod}h`,
+          gaugeLevelData: data.gauge_level.map(item => ({
+            timestamp: item.time,
+            level:     item.value,
+            threshold: data.gauge_capacity_m,
+          })),
+          dischargeData: data.discharge.map(item => ({
+            timestamp: item.time,
+            discharge: item.value,
+            capacity:  data.discharge_capacity,
+          })),
+          riskProgressionData: data.risk_progression.map(item => ({
+            timestamp: item.time,
+            critical:  item.critical,
+            high:      item.high,
+            moderate:  item.moderate,
+            low:       item.low,
+          })),
+        };
+
+        setDashboardData(transformed);
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        setError("Could not load data. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [selectedUC, forecastPeriod, startDate, endDate]);
+  }, [selectedUC, forecastPeriod]);
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -53,18 +93,14 @@ const AuthorityDashboard = ({ user, onLogout }) => {
     }
   };
 
-  // Export handlers
   const handleExportPDF = () => {
-    const ucName = dashboardData.ucName || getSelectedUCName();
-    const dateRange = dashboardData.dateRange || (startDate && endDate ? `${startDate} to ${endDate}` : '');
-    
-    // Create printable content
+    if (!dashboardData) return;
     const printWindow = window.open('', '_blank');
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Flood Risk Report - ${ucName}</title>
+        <title>Flood Risk Report - ${dashboardData.ucName}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; }
           h1 { color: #173b5f; }
@@ -76,119 +112,59 @@ const AuthorityDashboard = ({ user, onLogout }) => {
       </head>
       <body>
         <h1>C Guard - Flood Risk Report</h1>
-        <div class="info"><strong>Union Council:</strong> ${ucName}</div>
+        <div class="info"><strong>Station:</strong> ${dashboardData.ucName}</div>
         <div class="info"><strong>Forecast Period:</strong> ${forecastPeriod} hours</div>
-        ${dateRange ? `<div class="info"><strong>Date Range:</strong> ${dateRange}</div>` : ''}
         <div class="info"><strong>Generated:</strong> ${new Date().toLocaleString()}</div>
-        
+
         <h2>Gauge Levels</h2>
         <table>
-          <tr><th>Time (hrs)</th><th>Level (m)</th></tr>
-          ${dashboardData.gaugeLevels?.map(g => `<tr><td>${g.time}</td><td>${g.level}</td></tr>`).join('') || '<tr><td colspan="2">No data available</td></tr>'}
+          <tr><th>Time</th><th>Level (m)</th></tr>
+          ${dashboardData.gaugeLevelData?.map(g => `<tr><td>${g.timestamp}</td><td>${g.level}</td></tr>`).join('') || ''}
         </table>
-        
+
         <h2>Discharge Data</h2>
         <table>
-          <tr><th>Time (hrs)</th><th>Discharge (m³/s)</th></tr>
-          ${dashboardData.discharge?.map(d => `<tr><td>${d.time}</td><td>${d.value}</td></tr>`).join('') || '<tr><td colspan="2">No data available</td></tr>'}
+          <tr><th>Time</th><th>Discharge (m³/s)</th></tr>
+          ${dashboardData.dischargeData?.map(d => `<tr><td>${d.timestamp}</td><td>${d.discharge}</td></tr>`).join('') || ''}
         </table>
-        
-        <h2>Risk Progression</h2>
-        <table>
-          <tr><th>Period</th><th>Danger (%)</th><th>High (%)</th><th>Critical (%)</th></tr>
-          ${dashboardData.riskProgression?.map(r => `<tr><td>${r.hour}</td><td>${r.danger}</td><td>${r.high}</td><td>${r.critical}</td></tr>`).join('') || '<tr><td colspan="4">No data available</td></tr>'}
-        </table>
-        
+
         <script>
-          window.onload = () => {
-            window.print();
-            setTimeout(() => window.close(), 1000);
-          };
+          window.onload = () => { window.print(); setTimeout(() => window.close(), 1000); };
         </script>
       </body>
       </html>
     `;
-    
     printWindow.document.write(printContent);
     printWindow.document.close();
   };
 
   const handleExportCSV = () => {
-    const ucName = dashboardData.ucName || getSelectedUCName();
-    const dateRange = dashboardData.dateRange || (startDate && endDate ? `${startDate} to ${endDate}` : '');
-    
-    // Create CSV content
-    let csvContent = `C Guard - Flood Risk Data Export\n`;
-    csvContent += `Union Council,${ucName}\n`;
-    csvContent += `Forecast Period,${forecastPeriod} hours\n`;
-    if (dateRange) csvContent += `Date Range,${dateRange}\n`;
-    csvContent += `Generated,${new Date().toLocaleString()}\n\n`;
-    
-    // Gauge Levels
-    csvContent += `Gauge Levels\n`;
-    csvContent += `Time (hrs),Level (m)\n`;
-    if (dashboardData.gaugeLevels) {
-      dashboardData.gaugeLevels.forEach(g => {
-        csvContent += `${g.time},${g.level}\n`;
-      });
-    }
-    csvContent += `\n`;
-    
-    // Discharge Data
-    csvContent += `Discharge Data\n`;
-    csvContent += `Time (hrs),Discharge (m³/s)\n`;
-    if (dashboardData.discharge) {
-      dashboardData.discharge.forEach(d => {
-        csvContent += `${d.time},${d.value}\n`;
-      });
-    }
-    csvContent += `\n`;
-    
-    // Risk Progression
-    csvContent += `Risk Progression\n`;
-    csvContent += `Period,Danger (%),High (%),Critical (%)\n`;
-    if (dashboardData.riskProgression) {
-      dashboardData.riskProgression.forEach(r => {
-        csvContent += `${r.hour},${r.danger},${r.high},${r.critical}\n`;
-      });
-    }
-    
-    // Create and download CSV file
+    if (!dashboardData) return;
+    let csvContent = `C Guard - Flood Risk Data\nStation,${dashboardData.ucName}\nForecast,${forecastPeriod} hours\nGenerated,${new Date().toLocaleString()}\n\n`;
+    csvContent += `Gauge Levels\nTime,Level (m)\n`;
+    dashboardData.gaugeLevelData?.forEach(g => { csvContent += `${g.timestamp},${g.level}\n`; });
+    csvContent += `\nDischarge Data\nTime,Discharge (m³/s)\n`;
+    dashboardData.dischargeData?.forEach(d => { csvContent += `${d.timestamp},${d.discharge}\n`; });
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `CGuard_FloodRisk_${ucName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('href', URL.createObjectURL(blob));
+    link.setAttribute('download', `CGuard_${dashboardData.ucName}_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
-    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Get selected UC name
-  const getSelectedUCName = () => {
-    if (!selectedUC) return 'No UC Selected';
-    const uc = dashboardData.unitCommands.find(u => u.id === parseInt(selectedUC));
-    return uc ? uc.name : 'Unknown UC';
-  };
-
-  // Check if UC is selected to show reports
   const isUCSelected = selectedUC !== '';
 
   return (
     <div className="dashboard-container">
-      <TopNavbar 
-        user={user}
-        onExportPDF={handleExportPDF}
-        onExportCSV={handleExportCSV}
-        onLogout={handleLogout}
-      />
-      
+      <TopNavbar user={user} onLogout={handleLogout} />
+
       <div className="dashboard-content">
-        <Sidebar 
-          unitCommands={dashboardData.unitCommands}
+        <Sidebar
+          unitCommands={UC_LIST}
           selectedUC={selectedUC}
           onUCChange={setSelectedUC}
           forecastPeriod={forecastPeriod}
@@ -197,8 +173,10 @@ const AuthorityDashboard = ({ user, onLogout }) => {
           endDate={endDate}
           onStartDateChange={setStartDate}
           onEndDateChange={setEndDate}
+          onManageShelters={onManageShelters}
+          activePage="dashboard"
         />
-        
+
         <main className="main-area">
           <div className="main-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -227,10 +205,14 @@ const AuthorityDashboard = ({ user, onLogout }) => {
             <div style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>
               Loading dashboard data...
             </div>
+          ) : error ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#ef4444' }}>
+              {error}
+            </div>
           ) : !isUCSelected ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '60px 40px', 
+            <div style={{
+              textAlign: 'center',
+              padding: '60px 40px',
               color: '#94A3B8',
               backgroundColor: '#F8FAFC',
               borderRadius: '8px',
@@ -246,29 +228,27 @@ const AuthorityDashboard = ({ user, onLogout }) => {
                 Please select a Union Council from the sidebar to view flood monitoring reports and analytics.
               </p>
             </div>
-          ) : (
+          ) : dashboardData ? (
             <div className="charts-grid">
-              <GaugeChart 
+              <GaugeChart
                 data={dashboardData.gaugeLevelData}
                 ucName={dashboardData.ucName}
                 dateRange={dashboardData.dateRange}
               />
-              
               <div className="charts-row">
-                <DischargeChart 
+                <DischargeChart
                   data={dashboardData.dischargeData}
                   ucName={dashboardData.ucName}
                   dateRange={dashboardData.dateRange}
                 />
-                
-                <RiskProgressionChart 
+                <RiskProgressionChart
                   data={dashboardData.riskProgressionData}
                   ucName={dashboardData.ucName}
                   dateRange={dashboardData.dateRange}
                 />
               </div>
             </div>
-          )}
+          ) : null}
         </main>
       </div>
     </div>

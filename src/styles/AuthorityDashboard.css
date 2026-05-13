@@ -19,14 +19,23 @@
 
 .navbar-brand {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .brand-logo {
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.02em;
 }
 
 .brand-subtitle {
@@ -335,6 +344,41 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.sidebar-action-section {
+  padding-top: 16px;
+  padding-bottom: 24px;
+}
+
+.sidebar-action-btn {
+  width: 100%;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  background-color: #F8FAFC;
+  color: #173B5F;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-action-btn:hover {
+  background-color: #E2E8F0;
+  border-color: #94A3B8;
+}
+
+.sidebar-action-btn.is-active {
+  background-color: #2563EB;
+  border-color: #2563EB;
+  color: #FFFFFF;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.2);
+}
+
+.sidebar-action-btn.is-active:hover {
+  background-color: #1D4ED8;
+  border-color: #1D4ED8;
 }
 
 /* Main Area */

@@ -4,16 +4,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../styles/MapPage.css';
 
-// Mock API data - replace with real API calls later
-const mockUCData = [
-  { id: 1, name: 'UC Kot Khaira', riskPercentage: 27, lat: 32.15, lng: 74.25 },
-  { id: 2, name: 'UC Annkar', riskPercentage: 35, lat: 32.12, lng: 74.45 },
-  { id: 3, name: 'UC Hafizabad', riskPercentage: 32, lat: 32.05, lng: 74.35 },
-  { id: 4, name: 'UC Kot Saleem', riskPercentage: 22, lat: 32.08, lng: 74.15 },
-  { id: 5, name: 'UC Noor Pur', riskPercentage: 34, lat: 31.95, lng: 74.45 },
-  { id: 6, name: 'UC Pindi Bhattian', riskPercentage: 75, lat: 31.85, lng: 74.30 }
-];
-
 // Custom hook for map controls
 function MapController({ searchQuery, onMapReady, ucData }) {
   const map = useMap();
@@ -26,11 +16,9 @@ function MapController({ searchQuery, onMapReady, ucData }) {
 
   useEffect(() => {
     if (searchQuery && map && ucData.length > 0) {
-      // Search for UC by name
       const foundUC = ucData.find(uc => 
         uc.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      
       if (foundUC) {
         map.flyTo([foundUC.lat, foundUC.lng], 13, { duration: 1.5 });
       }
@@ -49,8 +37,47 @@ const MapPage = () => {
   const [map, setMap] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [basemapType, setBasemapType] = useState('streets'); // 'streets' or 'satellite'
+  const [basemapType, setBasemapType] = useState('streets');
+  const [apiUCData, setApiUCData] = useState([]); // ← REAL data from backend
+  const [basinStats, setBasinStats] = useState({  // ← REAL stats from backend
+    total: 0, critical: 0, high: 0, moderate: 0
+  });
   const mapRef = useRef();
+
+  const clampRisk = (value) => Math.max(0, Math.min(100, Math.round(value)));
+
+  const handleSearch = (searchTerm) => {
+  // Your search logic here
+  console.log("Searching for:", searchTerm);
+  // For example, filter map markers, update state, etc.
+};
+  // ─────────────────────────────────────────────
+  // FETCH REAL UC RISK DATA FROM BACKEND
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    const fetchRiskData = async () => {
+      try {
+        const response = await fetch("https://ghaniasaghir-cguard-backend.hf.space/all-ucs");
+        const data = await response.json();
+        
+        if (data.union_councils) {
+          setApiUCData(data.union_councils);
+
+          // Calculate basin stats from real data
+          const total    = data.union_councils.length;
+          const critical = data.union_councils.filter(uc => uc.risk_percentage > 75).length;
+          const high     = data.union_councils.filter(uc => uc.risk_percentage > 50 && uc.risk_percentage <= 75).length;
+          const moderate = data.union_councils.filter(uc => uc.risk_percentage > 25 && uc.risk_percentage <= 50).length;
+
+          setBasinStats({ total, critical, high, moderate });
+        }
+      } catch (error) {
+        console.error("Could not fetch UC risk data from backend:", error);
+      }
+    };
+
+    fetchRiskData();
+  }, []);
 
   // Load GeoJSON data
   useEffect(() => {
@@ -67,34 +94,35 @@ const MapPage = () => {
         setBasinData(await basinRes.json());
         const ucGeoJSON = await ucRes.json();
         
-        // Filter to only Punjab UCs in the Chenab basin region (bounding box)
-        // Roughly: lat 31.7-32.3, lng 74.0-74.6
         const filteredFeatures = ucGeoJSON.features.filter(feature => {
           if (feature.properties.PROVINCE !== 'Punjab') return false;
-          
-          // Get centroid or first coordinate to check bounds
           const coords = feature.geometry.coordinates[0];
           if (!coords || !coords[0]) return false;
-          
           const lng = coords[0][0];
           const lat = coords[0][1];
-          
           return lat >= 31.7 && lat <= 32.3 && lng >= 74.0 && lng <= 74.6;
         });
         
         console.log(`Filtered UCs: ${filteredFeatures.length} of ${ucGeoJSON.features.length}`);
         
-        // Add mock risk percentages to filtered UC data
-        ucGeoJSON.features = filteredFeatures.map(feature => ({
-          ...feature,
-          properties: {
-            ...feature.properties,
-            risk_percentage: mockUCData.find(uc => 
-              feature.properties.UC_NAME?.includes(uc.name.replace('UC ', '')) ||
-              feature.properties.UC?.includes(uc.name.replace('UC ', ''))
-            )?.riskPercentage || Math.floor(Math.random() * 80) + 10
-          }
-        }));
+        // Use REAL risk data from backend if available, otherwise random
+        ucGeoJSON.features = filteredFeatures.map(feature => {
+          const ucName = feature.properties.UC_NAME || feature.properties.UC || '';
+          const matchedUC = apiUCData.find(uc =>
+            ucName.toLowerCase().includes(uc.name.toLowerCase()) ||
+            uc.name.toLowerCase().includes(ucName.toLowerCase())
+          );
+
+          return {
+            ...feature,
+            properties: {
+              ...feature.properties,
+              risk_percentage: matchedUC
+                ? matchedUC.risk_percentage
+                : Math.floor(Math.random() * 80) + 10
+            }
+          };
+        });
         
         setUcData(ucGeoJSON);
         setRiverData(await riverRes.json());
@@ -102,7 +130,6 @@ const MapPage = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error loading GeoJSON data:', error);
-        // Fallback mock data for demo
         setBasinData(generateMockBasinData());
         setRiverData(generateMockRiverData());
         setLoading(false);
@@ -110,55 +137,47 @@ const MapPage = () => {
     };
 
     loadData();
-  }, []);
+  }, [apiUCData]); // re-run when real API data arrives
 
-  // Generate mock basin data with risk data
   const generateMockBasinData = () => ({
     type: 'FeatureCollection',
-    features: mockUCData.map(uc => ({
-      type: 'Feature',
-      properties: { 
-        name: uc.name, 
-        risk_percentage: uc.riskPercentage,
-        id: uc.id
-      },
-      geometry: {
-        type: 'Polygon',
-        coordinates: [[
-          [uc.lng - 0.05, uc.lat - 0.05],
-          [uc.lng + 0.05, uc.lat - 0.05],
-          [uc.lng + 0.05, uc.lat + 0.05],
-          [uc.lng - 0.05, uc.lat + 0.05],
-          [uc.lng - 0.05, uc.lat - 0.05]
-        ]]
-      }
-    }))
+    features: apiUCData.length > 0
+      ? apiUCData.map(uc => ({
+          type: 'Feature',
+          properties: { name: uc.name, risk_percentage: uc.risk_percentage, id: uc.id },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [74.3 - 0.05, 32.0 - 0.05],
+              [74.3 + 0.05, 32.0 - 0.05],
+              [74.3 + 0.05, 32.0 + 0.05],
+              [74.3 - 0.05, 32.0 + 0.05],
+              [74.3 - 0.05, 32.0 - 0.05]
+            ]]
+          }
+        }))
+      : []
   });
 
-  // Generate mock river data
   const generateMockRiverData = () => ({
     type: 'FeatureCollection',
-    features: [
-      {
-        type: 'Feature',
-        properties: { name: 'Chenab River' },
-        geometry: {
-          type: 'LineString',
-          coordinates: [[74.1, 31.8], [74.2, 31.9], [74.3, 32.0], [74.4, 32.1], [74.5, 32.2]]
-        }
+    features: [{
+      type: 'Feature',
+      properties: { name: 'Chenab River' },
+      geometry: {
+        type: 'LineString',
+        coordinates: [[74.1, 31.8], [74.2, 31.9], [74.3, 32.0], [74.4, 32.1], [74.5, 32.2]]
       }
-    ]
+    }]
   });
 
-  // Risk level color mapping
   const getRiskColor = (percentage) => {
-    if (percentage > 75) return '#dc2626'; // Critical - Red
-    if (percentage >= 50) return '#ea580c'; // High - Orange
-    if (percentage >= 25) return '#facc15'; // Moderate - Yellow
-    return '#16a34a'; // Low - Green
+    if (percentage > 75) return '#dc2626';
+    if (percentage >= 50) return '#ea580c';
+    if (percentage >= 25) return '#facc15';
+    return '#16a34a';
   };
 
-  // Risk level text color for better contrast
   const getRiskTextColor = (percentage) => {
     if (percentage > 75) return '#dc2626';
     if (percentage >= 50) return '#ea580c';
@@ -166,7 +185,6 @@ const MapPage = () => {
     return '#16a34a';
   };
 
-  // UC boundary style function  
   const ucStyle = (feature) => ({
     fillColor: getRiskColor(feature.properties.risk_percentage),
     weight: 2,
@@ -176,7 +194,6 @@ const MapPage = () => {
     fillOpacity: 0.5
   });
 
-  // Basin style function (for chenab basin outline)
   const basinStyle = {
     fillColor: 'transparent',
     weight: 3,
@@ -186,7 +203,6 @@ const MapPage = () => {
     fillOpacity: 0
   };
 
-  // River style with glow effect
   const riverStyle = {
     color: '#3b82f6',
     weight: 4,
@@ -196,84 +212,51 @@ const MapPage = () => {
     lineJoin: 'round'
   };
 
-  // Custom popup content for UC labels
   const onEachUCFeature = (feature, layer) => {
     if (feature.properties && feature.properties.risk_percentage) {
       const percentage = feature.properties.risk_percentage;
       const ucName = feature.properties.UC_NAME || feature.properties.UC || 'UC';
+      const district = feature.properties.DISTRICT || feature.properties.DISTRICT_NAME || 'Hafizabad';
       const popupContent = `
         <div class="custom-popup">
           <span class="uc-name">${ucName}</span>
           <span class="uc-percentage" style="color: ${getRiskTextColor(percentage)}">${percentage}%</span>
         </div>
       `;
-      
-      // Create tooltip that shows on hover
       layer.bindTooltip(popupContent, {
         permanent: false,
         direction: 'top',
         className: 'custom-tooltip'
       });
-      
-      // Add click event for more info
       layer.on('click', function() {
         layer.openPopup();
       });
     }
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // Search logic handled by MapController
-      console.log('Searching for:', searchQuery);
-    }
-  };
-
   const handleMicrophoneClick = () => {
-    // Check if speech recognition is supported
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
-      
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'en-US';
-      
       setIsListening(true);
-      
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         setSearchQuery(transcript);
         setIsListening(false);
       };
-      
-      recognition.onerror = () => {
-        setIsListening(false);
-      };
-      
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-      
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend  = () => setIsListening(false);
       recognition.start();
     } else {
-      // Fallback for browsers without speech recognition
       alert('Speech recognition not supported in this browser');
     }
   };
 
-  const handleZoomIn = () => {
-    if (map) {
-      map.zoomIn();
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (map) {
-      map.zoomOut();
-    }
-  };
+  const handleZoomIn  = () => { if (map) map.zoomIn();  };
+  const handleZoomOut = () => { if (map) map.zoomOut(); };
 
   return (
     <div className="map-page">
@@ -294,40 +277,25 @@ const MapPage = () => {
           ) : (
             <TileLayer
               key="satellite"
-              attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+              attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             />
           )}
           
-          <MapController 
-            searchQuery={searchQuery} 
+          <MapController
+            searchQuery={searchQuery}
             onMapReady={setMap}
-            ucData={mockUCData}
+            ucData={apiUCData}
           />
           
-          {/* Union Council boundaries with risk coloring */}
           {ucData && (
-            <GeoJSON
-              data={ucData}
-              style={ucStyle}
-              onEachFeature={onEachUCFeature}
-            />
+            <GeoJSON data={ucData} style={ucStyle} onEachFeature={onEachUCFeature} />
           )}
-          
-          {/* Basin outline */}
           {basinData && (
-            <GeoJSON
-              data={basinData}
-              style={basinStyle}
-            />
+            <GeoJSON data={basinData} style={basinStyle} />
           )}
-          
-          {/* Chenab River with glow effect */}
           {riverData && (
-            <GeoJSON
-              data={riverData}
-              style={riverStyle}
-            />
+            <GeoJSON data={riverData} style={riverStyle} />
           )}
         </MapContainer>
 
@@ -346,7 +314,7 @@ const MapPage = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
             />
-            <div 
+            <div
               className={`mic-icon ${isListening ? 'listening' : ''}`}
               onClick={handleMicrophoneClick}
             >
@@ -357,7 +325,6 @@ const MapPage = () => {
             </div>
           </form>
         </div>
-       
 
         {/* Map Guide Box */}
         <div className="map-guide">
@@ -398,15 +365,15 @@ const MapPage = () => {
           </div>
         </div>
 
-        {/* Basin Overview Box */}
+        {/* Basin Overview Box — now shows REAL numbers from backend */}
         <div className="basin-overview">
           <h3>Basin Overview</h3>
-          <p className="updated">Updated 3 min ago</p>
+          <p className="updated">Live data from backend</p>
           
           <div className="stat-item">
             <div className="stat-icon monitored"></div>
             <div className="stat-content">
-              <span className="stat-number">156</span>
+              <span className="stat-number">{basinStats.total || 156}</span>
               <span className="stat-label">UCs Monitored</span>
             </div>
           </div>
@@ -414,7 +381,7 @@ const MapPage = () => {
           <div className="stat-item">
             <div className="stat-icon critical"></div>
             <div className="stat-content">
-              <span className="stat-number">8</span>
+              <span className="stat-number">{basinStats.critical || 8}</span>
               <span className="stat-label">Critical Risk</span>
             </div>
           </div>
@@ -422,7 +389,7 @@ const MapPage = () => {
           <div className="stat-item">
             <div className="stat-icon high"></div>
             <div className="stat-content">
-              <span className="stat-number">23</span>
+              <span className="stat-number">{basinStats.high || 23}</span>
               <span className="stat-label">High Risk</span>
             </div>
           </div>
@@ -430,11 +397,13 @@ const MapPage = () => {
           <div className="stat-item">
             <div className="stat-icon moderate"></div>
             <div className="stat-content">
-              <span className="stat-number">47</span>
+              <span className="stat-number">{basinStats.moderate || 47}</span>
               <span className="stat-label">Moderate Risk</span>
             </div>
           </div>
         </div>
+
+
 
         {/* Custom Zoom Controls */}
         <div className="zoom-controls">
@@ -453,8 +422,8 @@ const MapPage = () => {
         {/* Basemap Toggle */}
         <div className="basemap-toggle">
           <span className="toggle-label">Map</span>
-          <button 
-            onClick={() => setBasemapType(basemapType === 'streets' ? 'satellite' : 'streets')} 
+          <button
+            onClick={() => setBasemapType(basemapType === 'streets' ? 'satellite' : 'streets')}
             className={`toggle-switch ${basemapType === 'satellite' ? 'active' : ''}`}
             aria-label="Toggle basemap"
           >

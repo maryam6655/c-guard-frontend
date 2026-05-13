@@ -9,7 +9,7 @@ import "./App.css";
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
   const [user, setUser] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(null);
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -34,7 +34,7 @@ function App() {
   };
 
   const handleViewShelters = (location) => {
-    setUserLocation(location);
+    setSelectedLocation(location || null);
     setCurrentPage("shelters");
   };
 
@@ -52,7 +52,7 @@ function App() {
   }
 
   if (currentPage === "shelters") {
-    return <SheltersPage onBack={handleBackToHome} />;
+    return <SheltersPage onBack={handleCheckFloodRisk} selectedLocation={selectedLocation} />;
   }
 
   return <Home onAuthorityLogin={handleAuthorityLogin} onCheckFloodRisk={handleCheckFloodRisk} />;

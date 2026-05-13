@@ -1,18 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useState } from 'react';
+import { FaMapMarkerAlt, FaShieldAlt } from 'react-icons/fa';
+import FloodMap from '../components/FloodMap';
+import CGuardLogoIcon from '../components/CGuardLogoIcon';
+import UCFloodRiskPopup from '../components/UCFloodRiskPopup';
 import '../styles/FloodRiskPage.css';
-
-// Dummy data for union councils with flood risk
-const dummyUCData = [
-  { id: 1, name: 'UC Kot Khaira', risk: 27, lat: 32.15, lng: 74.25 },
-  { id: 2, name: 'UC Annkar', risk: 35, lat: 32.12, lng: 74.45 },
-  { id: 3, name: 'UC Hafizabad', risk: 32, lat: 32.05, lng: 74.35 },
-  { id: 4, name: 'UC Kot Saleem', risk: 22, lat: 32.08, lng: 74.15 },
-  { id: 5, name: 'UC Noor Pur', risk: 34, lat: 31.95, lng: 74.45 },
-  { id: 6, name: 'UC Pindi Bhattian', risk: 75, lat: 31.85, lng: 74.30 }
-];
 
 // Dummy location data for user (simulating location detection)
 const dummyUserLocation = {
@@ -28,125 +19,73 @@ const dummyUserLocation = {
 };
 
 const FloodRiskPage = ({ onBackToHome, onViewShelters }) => {
-  const [ucData, setUcData] = useState(null);
-  const [riverData, setRiverData] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
+  const [userLocation, setUserLocation] = useState(dummyUserLocation);
   const [locationPrompt, setLocationPrompt] = useState(true);
+  const [mapLocation, setMapLocation] = useState(null);
+  const [showRiverLayer, setShowRiverLayer] = useState(true);
+  const [showUcBoundaries, setShowUcBoundaries] = useState(true);
+  const [statusText, setStatusText] = useState('Waiting for live data');
+  const [selectedUC, setSelectedUC] = useState({
+    uc: 'UC XYZ',
+    district: 'Hafizabad',
+    risk24: 48,
+    risk48: 58,
+    risk72: 40,
+  });
+  const [locationLabel, setLocationLabel] = useState('Your Location');
+  const [locationTime, setLocationTime] = useState(() => new Date().toLocaleString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  }));
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [map, setMap] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
 
-  // Load GeoJSON data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [ucRes, riverRes] = await Promise.all([
-          fetch('/geojson/union_councils.geojson'),
-          fetch('/geojson/chenab_rivers.geojson')
-        ]);
-        
-        const ucGeoJSON = await ucRes.json();
-        
-        // Filter UCs and add risk data
-        const filteredFeatures = ucGeoJSON.features.filter(feature => {
-          if (feature.properties.PROVINCE !== 'Punjab') return false;
-          const coords = feature.geometry.coordinates[0];
-          if (!coords || !coords[0]) return false;
-          const lng = coords[0][0];
-          const lat = coords[0][1];
-          return lat >= 31.7 && lat <= 32.3 && lng >= 74.0 && lng <= 74.6;
-        });
-        
-        ucGeoJSON.features = filteredFeatures.map(feature => ({
-          ...feature,
-          properties: {
-            ...feature.properties,
-            risk_percentage: dummyUCData.find(uc => 
-              feature.properties.UC_NAME?.includes(uc.name.replace('UC ', ''))
-            )?.risk || Math.floor(Math.random() * 60) + 15
-          }
-        }));
-        
-        setUcData(ucGeoJSON);
-        setRiverData(await riverRes.json());
-      } catch (error) {
-        console.error('Error loading data:', error);
-      }
-    };
-    
-    loadData();
-  }, []);
+  const formatLocationTime = (date = new Date()) =>
+    date.toLocaleString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
 
   // Handle location sharing
   const handleAllowLocation = () => {
-    setLocationPrompt(false);
-    // Simulate location detection with dummy data
-    setTimeout(() => {
-      setUserLocation(dummyUserLocation);
-      if (map) {
-        map.flyTo([dummyUserLocation.lat, dummyUserLocation.lng], 13, { duration: 1.5 });
-      }
-    }, 500);
-  };
+    if (!navigator.geolocation) {
+      setLocationPrompt(false);
+      return;
+    }
 
-  // Risk level color mapping
-  const getRiskColor = (percentage) => {
-    if (percentage > 75) return '#dc2626';
-    if (percentage >= 50) return '#ea580c';
-    if (percentage >= 25) return '#facc15';
-    return '#22c55e';
-  };
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const locationText = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 
-  // Risk level text
-  const getRiskLevel = (percentage) => {
-    if (percentage > 75) return 'Critical';
-    if (percentage >= 50) return 'High';
-    if (percentage >= 25) return 'Moderate';
-    return 'Low';
-  };
-
-  // Style for UC polygons
-  const ucStyle = (feature) => {
-    const risk = feature.properties.risk_percentage || 0;
-    return {
-      fillColor: getRiskColor(risk),
-      weight: 1,
-      opacity: 1,
-      color: 'white',
-      fillOpacity: 0.6
-    };
-  };
-
-  // Style for rivers
-  const riverStyle = {
-    color: '#3b82f6',
-    weight: 3,
-    opacity: 0.8
-  };
-
-  // Handle UC click
-  const onEachUC = (feature, layer) => {
-    const risk = feature.properties.risk_percentage || 0;
-    const ucName = feature.properties.UC_NAME || feature.properties.UC || 'Unknown';
-    
-    layer.on({
-      mouseover: (e) => {
-        e.target.setStyle({
-          fillOpacity: 0.8
-        });
+        setMapLocation([latitude, longitude]);
+        setLocationLabel(locationText);
+        setLocationTime(formatLocationTime());
+        setUserLocation((prev) => ({
+          ...(prev || dummyUserLocation),
+          lat: latitude,
+          lng: longitude,
+        }));
+        setLocationPrompt(false);
       },
-      mouseout: (e) => {
-        e.target.setStyle({
-          fillOpacity: 0.6
-        });
+      () => {
+        setLocationLabel('Location unavailable');
+        setLocationTime(formatLocationTime());
+        setLocationPrompt(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
-    });
-    
-    layer.bindTooltip(`${ucName}: ${risk}%`, {
-      permanent: false,
-      direction: 'center',
-      className: 'uc-label'
-    });
+    );
   };
 
   // Voice search
@@ -176,77 +115,159 @@ const FloodRiskPage = ({ onBackToHome, onViewShelters }) => {
     return '#22c55e';
   };
 
+  const clampRisk = (value) => Math.max(0, Math.min(100, Math.round(value)));
+
+  const handleUcSelect = (selection) => {
+    if (!selection) return;
+
+    const baseRisk = selection.riskPercentage != null
+      ? Number(selection.riskPercentage)
+      : selection.discharge != null
+        ? (Number(selection.discharge) / 50000) * 100
+        : 40;
+
+    const risk24 = clampRisk(baseRisk - 8);
+    const risk48 = clampRisk(baseRisk);
+    const risk72 = clampRisk(baseRisk - 14);
+
+    setSelectedUC({
+      uc: selection.ucName || 'Unknown UC',
+      district: selection.district || 'Unknown District',
+      risk24,
+      risk48,
+      risk72,
+    });
+
+    setUserLocation((prev) => ({
+      ...(prev || dummyUserLocation),
+      uc: selection.ucName || 'Unknown UC',
+      district: selection.district || 'Unknown District',
+      floodRisk: {
+        twentyFourHour: risk24,
+        fortyEightHour: risk48,
+        seventyTwoHour: risk72,
+      },
+    }));
+  };
+
+  const handleLiveUpdate = ({ lastUpdated, liveError, loadingLive }) => {
+    if (loadingLive) {
+      setStatusText('Refreshing live data...');
+      return;
+    }
+
+    if (liveError) {
+      setStatusText('Waiting for live data');
+      return;
+    }
+
+    if (lastUpdated) {
+      setStatusText(`Updated ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+      return;
+    }
+
+    setStatusText('Waiting for live data');
+  };
+
+  const handleViewShelters = () => {
+    setShowPopup(false);
+    if (onViewShelters) {
+      onViewShelters(userLocation || dummyUserLocation);
+    }
+  };
+
   return (
     <div className="flood-risk-page">
       {/* Header */}
       <div className="flood-risk-header">
         <div className="header-left">
-          <h1 className="page-title">C Guard | Chenab Basin</h1>
+          <div className="header-brand">
+            <span className="header-logo-icon" aria-hidden="true">
+              <CGuardLogoIcon size={34} />
+            </span>
+            <h1 className="page-title">C Guard | Chenab Basin</h1>
+          </div>
         </div>
         <div className="header-right">
           <button className="back-btn" onClick={onBackToHome}>
             ← Back to Home
           </button>
           <div className="user-location-display">
-            Your Location
-            <span className="location-time">Jan 2 2026 14:00 PKT</span>
+            {locationLabel}
+            <span className="location-time">{locationTime}</span>
           </div>
         </div>
       </div>
 
-      {/* Map Guide Sidebar */}
-      <div className="map-guide-sidebar">
-        <h3 className="sidebar-title">Map Guide</h3>
-        
-        <div className="legend-item">
-          <div className="legend-line chenab-river"></div>
-          <span>Chenab River</span>
+        {/* Map Guide Sidebar */}
+        <div className="map-guide-sidebar">
+          <h3 className="sidebar-title">Map Guide</h3>
+
+          <label className="legend-item map-guide-toggle">
+            <input
+              type="checkbox"
+              checked={showRiverLayer}
+              onChange={(event) => setShowRiverLayer(event.target.checked)}
+            />
+            <div className="legend-line chenab-river"></div>
+            <span>Chenab River</span>
+          </label>
+
+          <label className="legend-item map-guide-toggle">
+            <input
+              type="checkbox"
+              checked={showUcBoundaries}
+              onChange={(event) => setShowUcBoundaries(event.target.checked)}
+            />
+            <div className="legend-line uc-boundary"></div>
+            <span>UC Boundaries</span>
+          </label>
+
+          <div className="risk-section">
+            <p className="risk-indicator">% = Flood Risk</p>
+
+            <h4 className="risk-title">Risk Levels</h4>
+
+            <div className="risk-level-item">
+              <div className="risk-dot critical"></div>
+              <span className="risk-label">Critical</span>
+              <span className="risk-range">&gt; 75%</span>
+            </div>
+
+            <div className="risk-level-item">
+              <div className="risk-dot high"></div>
+              <span className="risk-label">High</span>
+              <span className="risk-range">50-75%</span>
+            </div>
+
+            <div className="risk-level-item">
+              <div className="risk-dot moderate"></div>
+              <span className="risk-label">Moderate</span>
+              <span className="risk-range">25-50%</span>
+            </div>
+
+            <div className="risk-level-item">
+              <div className="risk-dot low"></div>
+              <span className="risk-label">Low</span>
+              <span className="risk-range">&lt; 25%</span>
+            </div>
+          </div>
         </div>
-        
-        <div className="legend-item">
-          <div className="legend-line uc-boundary"></div>
-          <span>UC Boundaries</span>
-        </div>
-        
-        <div className="risk-section">
-          <p className="risk-indicator">% = Flood Risk</p>
-          
-          <h4 className="risk-title">Risk Levels</h4>
-          
-          <div className="risk-level-item">
-            <div className="risk-dot critical"></div>
-            <span className="risk-label">Critical</span>
-            <span className="risk-range">&gt; 75%</span>
-          </div>
-          
-          <div className="risk-level-item">
-            <div className="risk-dot high"></div>
-            <span className="risk-label">High</span>
-            <span className="risk-range">50-75%</span>
-          </div>
-          
-          <div className="risk-level-item">
-            <div className="risk-dot moderate"></div>
-            <span className="risk-label">Moderate</span>
-            <span className="risk-range">25-50%</span>
-          </div>
-          
-          <div className="risk-level-item">
-            <div className="risk-dot low"></div>
-            <span className="risk-label">Low</span>
-            <span className="risk-range">&lt; 25%</span>
-          </div>
-        </div>
-      </div>
 
       {/* Map Container */}
       <div className="map-container">
         {locationPrompt && (
           <div className="location-prompt-overlay">
             <div className="location-prompt-card">
-              <div className="location-icon">📍</div>
+              <div className="location-icon-wrap" aria-hidden="true">
+                <FaMapMarkerAlt className="location-icon-react" />
+              </div>
               <h2>Share Your Location</h2>
               <p>Allow access to your location to view flood risk information for your area</p>
+              <div className="location-trust-note">
+                <FaShieldAlt aria-hidden="true" />
+                <span>Used only for local flood risk guidance</span>
+              </div>
               <button className="allow-location-btn" onClick={handleAllowLocation}>
                 Allow Location Access
               </button>
@@ -284,59 +305,28 @@ const FloodRiskPage = ({ onBackToHome, onViewShelters }) => {
           </form>
         </div>
 
-        {/* Leaflet Map */}
-        <MapContainer
-          center={[32.0, 74.3]}
-          zoom={11}
-          className="leaflet-map"
-          whenCreated={setMap}
-        >
-          <TileLayer
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution='&copy; Esri'
-          />
-          
-          {ucData && (
-            <GeoJSON 
-              data={ucData} 
-              style={ucStyle}
-              onEachFeature={onEachUC}
-            />
-          )}
-          
-          {riverData && (
-            <GeoJSON 
-              data={riverData} 
-              style={riverStyle}
-            />
-          )}
-          
-          {userLocation && (
-            <Marker 
-              position={[userLocation.lat, userLocation.lng]}
-              icon={L.divIcon({
-                className: 'user-location-marker',
-                html: '<div class="user-marker-dot"></div>',
-                iconSize: [20, 20]
-              })}
-            />
-          )}
-        </MapContainer>
+        <FloodMap
+          searchQuery={searchQuery}
+          userLocation={mapLocation}
+          showRiverLayer={showRiverLayer}
+          showUcBoundaries={showUcBoundaries}
+          onUcSelect={handleUcSelect}
+          onLiveUpdate={handleLiveUpdate}
+        />
 
         {/* User Location Info Panel */}
-        {userLocation && (
-          <div className="user-location-panel">
-            <h3 className="panel-title">Your Union Council: {userLocation.uc} — {userLocation.district}</h3>
+        <div className="user-location-panel">
+          <h3 className="panel-title">Your Union Council: {selectedUC.uc} — {selectedUC.district}</h3>
             
             <div className="risk-info-row">
               <div className="risk-time-label">24-Hour Flood Risk</div>
-              <div className="risk-value">{userLocation.floodRisk.twentyFourHour}%</div>
+              <div className="risk-value">{selectedUC.risk24}%</div>
               <div className="risk-progress-bar">
                 <div 
                   className="risk-progress-fill"
                   style={{
-                    width: `${userLocation.floodRisk.twentyFourHour}%`,
-                    backgroundColor: getProgressColor(userLocation.floodRisk.twentyFourHour)
+                    width: `${selectedUC.risk24}%`,
+                    backgroundColor: getProgressColor(selectedUC.risk24)
                   }}
                 ></div>
               </div>
@@ -344,13 +334,13 @@ const FloodRiskPage = ({ onBackToHome, onViewShelters }) => {
             
             <div className="risk-info-row">
               <div className="risk-time-label">48-Hour Flood Risk</div>
-              <div className="risk-value">{userLocation.floodRisk.fortyEightHour}%</div>
+              <div className="risk-value">{selectedUC.risk48}%</div>
               <div className="risk-progress-bar">
                 <div 
                   className="risk-progress-fill"
                   style={{
-                    width: `${userLocation.floodRisk.fortyEightHour}%`,
-                    backgroundColor: getProgressColor(userLocation.floodRisk.fortyEightHour)
+                    width: `${selectedUC.risk48}%`,
+                    backgroundColor: getProgressColor(selectedUC.risk48)
                   }}
                 ></div>
               </div>
@@ -358,28 +348,39 @@ const FloodRiskPage = ({ onBackToHome, onViewShelters }) => {
             
             <div className="risk-info-row">
               <div className="risk-time-label">72-Hour Flood Risk</div>
-              <div className="risk-value">{userLocation.floodRisk.seventyTwoHour}%</div>
+              <div className="risk-value">{selectedUC.risk72}%</div>
               <div className="risk-progress-bar">
                 <div 
                   className="risk-progress-fill"
                   style={{
-                    width: `${userLocation.floodRisk.seventyTwoHour}%`,
-                    backgroundColor: getProgressColor(userLocation.floodRisk.seventyTwoHour)
+                    width: `${selectedUC.risk72}%`,
+                    backgroundColor: getProgressColor(selectedUC.risk72)
                   }}
                 ></div>
               </div>
             </div>
+
+            <div className="live-status-text">{statusText}</div>
             
             <button 
               className="shelters-btn"
-              onClick={() => onViewShelters && onViewShelters(userLocation)}
+              type="button"
+              onClick={handleViewShelters}
             >
               View Shelters List & Contacts
               <span className="arrow-icon">→</span>
             </button>
-          </div>
-        )}
+        </div>
       </div>
+
+      {/* Popup Modal */}
+      {showPopup && (
+        <UCFloodRiskPopup
+          ucData={selectedUC}
+          onClose={() => setShowPopup(false)}
+          onViewShelters={handleViewShelters}
+        />
+      )}
     </div>
   );
 };

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Navbar.css';
+import CGuardLogoIcon from './CGuardLogoIcon';
 
-const Navbar = ({ onAuthorityLogin }) => {
+const Navbar = ({ onAuthorityLogin, showBackButton = false, onBack }) => {
   const [activeSection, setActiveSection] = useState('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -56,25 +57,38 @@ const Navbar = ({ onAuthorityLogin }) => {
     <nav className={`navbar-main ${isScrolled ? 'scrolled' : ''}`}>
       <div className="navbar-content">
         <div className="navbar-logo" onClick={() => scrollToSection('home')}>
-          C Guard
+          <span className="navbar-logo-icon">
+            <CGuardLogoIcon size={40} />
+          </span>
+          <span className="navbar-logo-text">C Guard</span>
         </div>
 
-        {/* Desktop Menu */}
-        <ul className="navbar-links">
-          {navItems.map(item => (
-            <li
-              key={item.id}
-              className={`navbar-link ${activeSection === item.id ? 'active' : ''}`}
-              onClick={() => scrollToSection(item.id)}
-            >
-              {item.label}
-            </li>
-          ))}
-        </ul>
+        {!showBackButton && (
+          <>
+            {/* Desktop Menu */}
+            <ul className="navbar-links">
+              {navItems.map(item => (
+                <li
+                  key={item.id}
+                  className={`navbar-link ${activeSection === item.id ? 'active' : ''}`}
+                  onClick={() => scrollToSection(item.id)}
+                >
+                  {item.label}
+                </li>
+              ))}
+            </ul>
 
-        <button className="navbar-login-btn" onClick={onAuthorityLogin}>
-          Authority Login
-        </button>
+            <button className="navbar-login-btn" onClick={onAuthorityLogin}>
+              Authority Login
+            </button>
+          </>
+        )}
+
+        {showBackButton && (
+          <button className="navbar-back-btn" onClick={onBack} type="button">
+            ← Back to Previous Page
+          </button>
+        )}
 
         {/* Mobile Hamburger */}
         <button
@@ -89,7 +103,7 @@ const Navbar = ({ onAuthorityLogin }) => {
       </div>
 
       {/* Mobile Menu */}
-      {isMenuOpen && (
+      {!showBackButton && isMenuOpen && (
         <div className="mobile-menu">
           {navItems.map(item => (
             <div

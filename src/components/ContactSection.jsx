@@ -18,7 +18,6 @@ const ContactSection = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -55,9 +54,9 @@ const ContactSection = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const newErrors = validateForm();
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -65,20 +64,30 @@ const ContactSection = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch("https://ghaniasaghir-cguard-backend.hf.space/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name:    formData.name,
+          email:   formData.email,
+          subject: formData.subject,
+          message: formData.message
+        })
+      });
 
-    alert('Thank you! Your message has been sent successfully. We will get back to you soon.');
-    
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      subject: '',
-      message: ''
-    });
-    
-    setIsSubmitting(false);
+      if (response.ok) {
+        alert('Thank you! Your message has been sent successfully. We will get back to you soon.');
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        alert('Something went wrong. Please try again.');
+      }
+    } catch (error) {
+      console.error("Contact form error:", error);
+      alert('Could not send message. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -150,9 +159,9 @@ const ContactSection = () => {
               {errors.message && <span className="error-message">{errors.message}</span>}
             </div>
 
-            <button 
-              type="submit" 
-              className="contact-btn-main" 
+            <button
+              type="submit"
+              className="contact-btn-main"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Sending...' : 'Send Message'}

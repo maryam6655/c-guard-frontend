@@ -117,11 +117,14 @@
 }
 
 .contact-btn-main {
-  width: 100%;
-  background: #1FB6AD;
+  display: block;
+  width: fit-content;
+  min-width: 180px;
+  margin: 0 auto;
+  background: #22b6d5;
   color: #fff;
   border: none;
-  padding: 1.1rem 2rem;
+  padding: 0.95rem 1.6rem;
   font-size: 1.1rem;
   font-weight: 600;
   border-radius: 8px;
@@ -131,7 +134,7 @@
 }
 
 .contact-btn-main:hover:not(:disabled) {
-  background: #189a92;
+  background: #1fb6ad;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(31, 182, 173, 0.4);
 }
@@ -194,7 +197,9 @@
   }
 
   .contact-btn-main {
-    padding: 1rem 2rem;
+    width: 100%;
+    min-width: 0;
+    padding: 1rem 1.4rem;
     font-size: 1rem;
   }
 }

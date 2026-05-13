@@ -1,9 +1,14 @@
 import React, { useState } from "react";
+import CGuardLogoIcon from "../components/CGuardLogoIcon";
 import "../styles/AuthorityLogin.css";
+
+const floodPoster = "/flood.jpg";
+const floodVideo = "/flood.mp4";
 
 const AuthorityLogin = ({ onLogin, onBackToHome }) => {
   const [activeTab, setActiveTab] = useState("Login");
   const [showPassword, setShowPassword] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -22,65 +27,71 @@ const AuthorityLogin = ({ onLogin, onBackToHome }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       if (activeTab === "Login") {
-        // Simulate login validation
-        if (formData.email && formData.password) {
-          // Basic validation for demo - in production, this would be API call
-          if (formData.email.includes("@") && formData.password.length >= 6) {
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            // Create user object
-            const userData = {
-              email: formData.email,
-              name: formData.email.split("@")[0],
-              role: "Authority",
-              loginTime: new Date().toISOString()
-            };
-            
-            // Call parent function to navigate to dashboard
-            onLogin(userData);
-          } else {
-            alert("Please enter a valid email and password (min 6 characters)");
-          }
-        } else {
-          alert("Please fill in all fields");
-        }
-      } else {
-        // Sign up logic
-        if (formData.email && formData.password && formData.confirmPassword) {
-          if (formData.password !== formData.confirmPassword) {
-            alert("Passwords do not match");
-            return;
-          }
-          
-          if (formData.password.length < 6) {
-            alert("Password must be at least 6 characters");
-            return;
-          }
-          
-          // Simulate API delay
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Create user object
-          const userData = {
+        // REAL API CALL to backend
+        const response = await fetch("https://ghaniasaghir-cguard-backend.hf.space/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             email: formData.email,
-            name: formData.email.split("@")[0],
-            role: "Authority",
+            password: formData.password
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Save token so other pages can use it
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("userEmail", data.email);
+          localStorage.setItem("userName", data.name);
+
+          const userData = {
+            email: data.email,
+            name: data.name,
+            role: data.role,
             loginTime: new Date().toISOString()
           };
-          
-          // Call parent function to navigate to dashboard
           onLogin(userData);
         } else {
-          alert("Please fill in all fields");
+          alert(data.detail || "Invalid email or password");
+        }
+
+      } else {
+        // REAL REGISTER API CALL
+        if (formData.password !== formData.confirmPassword) {
+          alert("Passwords do not match");
+          return;
+        }
+        if (formData.password.length < 6) {
+          alert("Password must be at least 6 characters");
+          return;
+        }
+
+        const response = await fetch("https://ghaniasaghir-cguard-backend.hf.space/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: formData.email.split("@")[0],
+            email: formData.email,
+            password: formData.password
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert("Account created! Please login.");
+          switchToTab("Login");
+        } else {
+          alert(data.detail || "Registration failed. Try again.");
         }
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      alert("An error occurred. Please try again.");
+      alert("Could not connect to server. Make sure backend is running.");
     } finally {
       setIsSubmitting(false);
     }
@@ -92,7 +103,6 @@ const AuthorityLogin = ({ onLogin, onBackToHome }) => {
 
   const switchToTab = (tab) => {
     setActiveTab(tab);
-    // Clear form when switching tabs
     setFormData({
       email: "",
       password: "",
@@ -115,10 +125,39 @@ const AuthorityLogin = ({ onLogin, onBackToHome }) => {
       {/* Left Side - Background Image with Branding */}
       <div className="login-left">
         <div className="login-left-overlay">
-          <div className="brand-title">C Guard</div>
-          <div className="brand-subtitle">Chenab River Basin Flood Forecasting System</div>
-          <div className="brand-line"></div>
-          <div className="brand-footer">Authorized Access - Chenab River Flood Monitoring System</div>
+          <video
+            className={`login-left-video ${videoFailed ? "hidden" : ""}`}
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster={floodPoster}
+            preload="auto"
+            onLoadedData={() => setVideoFailed(false)}
+            onError={() => setVideoFailed(true)}
+          >
+            <source src={floodVideo} type="video/mp4" />
+          </video>
+          <img
+            alt="flood background"
+            className={`login-left-fallback ${videoFailed ? "visible" : ""}`}
+            src={floodPoster}
+          />
+          <div className="login-left-shade"></div>
+
+          <div className="login-left-copy">
+            <div className="login-brand-row">
+              <div className="login-brand-logo">
+                <CGuardLogoIcon size={96} />
+              </div>
+              <div className="login-brand-copy">
+                <div className="brand-kicker">C GUARD</div>
+                <div className="brand-title">Chenab River Basin Flood Forecasting System</div>
+                <div className="brand-line"></div>
+                <div className="brand-footer">Authorized access for flood monitoring and response teams</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -127,16 +166,16 @@ const AuthorityLogin = ({ onLogin, onBackToHome }) => {
         <div className="login-card">
           <h2>Authority Login</h2>
           <p className="login-desc">For authorized government officials only</p>
-          
+
           {/* Tabs */}
           <div className="tab-row">
-            <div 
+            <div
               className={`tab ${activeTab === "Login" ? "active" : ""}`}
               onClick={() => switchToTab("Login")}
             >
               Login
             </div>
-            <div 
+            <div
               className={`tab ${activeTab === "Sign Up" ? "active" : ""}`}
               onClick={() => switchToTab("Sign Up")}
             >
@@ -170,7 +209,7 @@ const AuthorityLogin = ({ onLogin, onBackToHome }) => {
                   required
                   style={{ paddingRight: "40px", width: "100%" }}
                 />
-                <div 
+                <div
                   onClick={togglePasswordVisibility}
                   style={{
                     position: "absolute",
@@ -188,22 +227,20 @@ const AuthorityLogin = ({ onLogin, onBackToHome }) => {
                     justifyContent: "center"
                   }}
                 >
-                  <svg 
-                    width="16" 
-                    height="16" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
                     strokeWidth="2"
                   >
                     {showPassword ? (
-                      // Eye slash (hidden)
                       <>
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
                         <line x1="1" y1="1" x2="23" y2="23"/>
                       </>
                     ) : (
-                      // Eye open (visible)
                       <>
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                         <circle cx="12" cy="12" r="3"/>
@@ -233,8 +270,8 @@ const AuthorityLogin = ({ onLogin, onBackToHome }) => {
             )}
 
             <button type="submit" className="login-btn" disabled={isSubmitting}>
-              {isSubmitting ? 
-                (activeTab === "Login" ? "Logging in..." : "Creating Account...") : 
+              {isSubmitting ?
+                (activeTab === "Login" ? "Logging in..." : "Creating Account...") :
                 (activeTab === "Login" ? "Login" : "Sign Up")
               }
             </button>
